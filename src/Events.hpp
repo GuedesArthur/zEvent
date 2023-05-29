@@ -1,7 +1,8 @@
+#pragma once
+
 #include <vector>		/// std::vector
 #include <algorithm>	/// std::for_each
 #include <functional>	/// std::function, std::bind
-#include <exception>
 
 using std::function, std::vector, std::for_each, std::remove, std::distance;
 
@@ -46,8 +47,6 @@ namespace Events
 		void operator()(const Args...) const;
 	};
 
-
-
 	template <typename... Args>
 	template <class T>
 	inline constexpr function<void(const Args...)> zEvent<Args...>::_bind(void (T::*f)(const Args...), T * objPtr) const
@@ -72,7 +71,6 @@ namespace Events
 	{
 		m_subs.emplace_back(f);
 	}
-
 
 	template <typename... Args>
 	template <class T>
