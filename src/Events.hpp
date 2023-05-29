@@ -1,7 +1,7 @@
 #include <vector>
 #include <algorithm>
-#include <execution>
 #include <functional>
+#include <exception>
 
 using std::function, std::vector, std::for_each, std::remove, std::distance;
 
@@ -9,98 +9,61 @@ namespace Zilla
 {
 namespace Events
 {
-	
-	/// @brief 
-	/// @tparam ...Args 
 	template<typename ...Args>
 	class zEvent
 	{
-		struct subscriber
-		{
-			const void* m_callerId;
-			const void* m_funcId;
-			const void (*m_func)(const Args...);
-			subscriber(const void (*)(const Args...));
-			subscriber(const void (*)(const Args...), void* id);
-			
-		public:
-			bool operator ==(const subscriber& rhs) const;
-			void operator ()(const Args...) const;
-		};
+		vector<function<void(const Args...)>> m_subs;
+		
 
-		vector<subscriber> m_subs;
-
-
+		template<class T>
+		constexpr function<void(const Args...)> _bind(void (T::*)(const Args...), T*) const;
+		
 	public:
 
-		template<typename ...FArgs>
-		void Subscribe(const void(*)(FArgs...,Args...), FArgs...);
-		template<typename ...FArgs>
-		void Subscribe(const void(*)(Args...,FArgs...), FArgs...);
 		template<class T>
-		void Subscribe(const void T::(*)(Args...), T);
+		void Subscribe(void (T::*)(const Args...), T*);
+		void Subscribe(function<void(const Args...)>);
 
-		void Subscribe(const void(*)());
-		void Subscribe(const void(*)(Args...));
-		void Subscribe(const function<void(const Args...)>);
-
-		void operator()(Args...) const;
-		
-		template<typename exec_policy>
-		void operator()(exec_policy, Args...) const;
+		void operator()(const Args...) const;
 	};
 
-#ifndef _RegionSubscriber
-
 	template <typename... Args>
-	inline zEvent<Args...>::subscriber::subscriber(const void (*func)(const Args...))
-		: m_callerId(0), m_funcId(static_cast<void*>(func)), m_func(func){}
-
-	template <typename... Args>
-	inline zEvent<Args...>::subscriber::subscriber(const void (*func)(const Args...), void *id)
-		: m_funcId(id), m_func(func) {}
-
-	template <typename... Args>
-	inline bool zEvent<Args...>::subscriber::operator==(const subscriber &rhs) const
+	template <class T>
+	inline constexpr function<void(const Args...)> zEvent<Args...>::_bind(void (T::*f)(const Args...), T * objPtr) const
 	{
-		return m_funcId == rhs.m_funcId;
+		using namespace std::placeholders;
+		
+		if constexpr(sizeof...(Args) == 0) return std::bind(f, objPtr);
+		if constexpr(sizeof...(Args) == 1) return std::bind(f, objPtr, _1);
+		if constexpr(sizeof...(Args) == 2) return std::bind(f, objPtr, _1, _2);
+		if constexpr(sizeof...(Args) == 3) return std::bind(f, objPtr, _1, _2, _3);
+		if constexpr(sizeof...(Args) == 4) return std::bind(f, objPtr, _1, _2, _3, _4);
+		if constexpr(sizeof...(Args) == 5) return std::bind(f, objPtr, _1, _2, _3, _4, _5);
+		if constexpr(sizeof...(Args) == 6) return std::bind(f, objPtr, _1, _2, _3, _4, _5, _6);
+		if constexpr(sizeof...(Args) == 7) return std::bind(f, objPtr, _1, _2, _3, _4, _5, _6, _7);
+		if constexpr(sizeof...(Args) == 8) return std::bind(f, objPtr, _1, _2, _3, _4, _5, _6, _7, _8);
+		if constexpr(sizeof...(Args) == 9) return std::bind(f, objPtr, _1, _2, _3, _4, _5, _6, _7, _8, _9);
+		if constexpr(sizeof...(Args) == 0) return std::bind(f, objPtr, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10);
 	}
 
 	template <typename... Args>
-	inline void zEvent<Args...>::subscriber::operator()(const Args... args) const
-	{
-		m_func(args...);
-	}
-
-
-#endif
-
-	
-	template <typename... Args>
-	inline void zEvent<Args...>::Subscribe(const void (*f)(Args...))
+	inline void zEvent<Args...>::Subscribe(function<void(const Args...)> f)
 	{
 		m_subs.emplace_back(f);
 	}
 
+
 	template <typename... Args>
-	inline void zEvent<Args...>::Subscribe(const void (*f)())
+	inline void zEvent<Args...>::operator()(const Args... args) const
 	{
-		using namespace std::placeholders;
-		m_subs.emplace_back(std::bind(f, _1, _2, _3));
+		std::for_each(m_subs.begin(), m_subs.end(), [&](function<void(const Args...)> f){f(args...);});
 	}
 
 	template <typename... Args>
-	inline void zEvent<Args...>::operator()(Args... args) const
+	template <class T>
+	inline void zEvent<Args...>::Subscribe(void (T::*f)(const Args...), T* objPtr)
 	{
-		std::for_each(m_subs.begin(), m_subs.end(), [=](subscriber s){s(args...);});
-	}
-	
-	template <typename... Args>
-	template <typename exec_policy>
-	inline void zEvent<Args...>::operator()(exec_policy exec, Args... args) const
-	{
-		static_assert(std::is_execution_policy_v<exec_policy>);
-		std::for_each(exec, m_subs.begin(), m_subs.end(), [=](subscriber s){s(args...);});
+		Subscribe(_bind(f, objPtr));
 	}
 }
 }
