@@ -15,7 +15,7 @@ namespace Events
 	template<typename ...Args>
 	class zEvent
 	{
-		constexpr size_t VecInitSize = 8;
+		static constexpr size_t VecInitSize = 8;
 		/// @brief Vector containing pointers to all subscribed functions
 		vector<function<void(const Args...)>> m_subs;
 
