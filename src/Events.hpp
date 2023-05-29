@@ -1,6 +1,6 @@
-#include <vector>
-#include <algorithm>
-#include <functional>
+#include <vector>		/// std::vector
+#include <algorithm>	/// std::for_each
+#include <functional>	/// std::function, std::bind
 #include <exception>
 
 using std::function, std::vector, std::for_each, std::remove, std::distance;
@@ -9,23 +9,44 @@ namespace Zilla
 {
 namespace Events
 {
+	/// @brief C#-like Event class. Observer/PubSub pattern. Accepts both functions and methods
+	/// @tparam ...Args Event arguments
 	template<typename ...Args>
 	class zEvent
 	{
+		/// @brief Vector containing pointers to all subscribed functions
 		vector<function<void(const Args...)>> m_subs;
-		
 
+		/// @brief Binds T's (class) method to a function wrapper, using provided object as an argument.
+		/// @tparam T Method class' type
+		/// @param f Method pointer
+		/// @param objPtr Class object pointer
+		/// @return Wrapper function invoking the method as objPtr's
 		template<class T>
 		constexpr function<void(const Args...)> _bind(void (T::*)(const Args...), T*) const;
 		
 	public:
 
+		/// @brief Subscribes an appropriate function to the event (regular function or static method)
+		/// @tparam ...Args Event arguments
+		/// @param f Function pointer
 		template<class T>
 		void Subscribe(void (T::*)(const Args...), T*);
+
+		/// @brief Subscribes a method with the appropriate arguments
+		/// @tparam ...Args Event arguments
+		/// @param f Method's pointer ( &TClass::methodName )
+		/// @param objPtr Calling object
 		void Subscribe(function<void(const Args...)>);
 
+		// TODO: Add unsubscribe methods.
+
+		/// @brief Calls every subscribed function using provided parameters as arguments
+		/// @param ...args Event parameters
 		void operator()(const Args...) const;
 	};
+
+
 
 	template <typename... Args>
 	template <class T>
@@ -54,16 +75,18 @@ namespace Events
 
 
 	template <typename... Args>
-	inline void zEvent<Args...>::operator()(const Args... args) const
-	{
-		std::for_each(m_subs.begin(), m_subs.end(), [&](function<void(const Args...)> f){f(args...);});
-	}
-
-	template <typename... Args>
 	template <class T>
 	inline void zEvent<Args...>::Subscribe(void (T::*f)(const Args...), T* objPtr)
 	{
 		Subscribe(_bind(f, objPtr));
 	}
+
+	template <typename... Args>
+	inline void zEvent<Args...>::operator()(const Args... args) const
+	{
+		std::for_each(m_subs.begin(), m_subs.end(), [&](function<void(const Args...)> f){f(args...);});
+	}
+
+
 }
 }
